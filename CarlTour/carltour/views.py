@@ -10,7 +10,7 @@ class UpcomingEventsAPI(object):
     def get(self):
         event_collection = self.request.db['events']
         # Exclude the _id field, but return everything else
-        all_events = list(event_collection.find(fields={'_id' : False}))
+        all_events = list(event_collection.find(fields={'_id' : False, "start_time":  False, "end_time" : False}))
 
         event_dict = {'events' : all_events}
         return event_dict
