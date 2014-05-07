@@ -1,6 +1,8 @@
 from pymongo import MongoClient
 from urllib.parse import urlparse
 from gridfs import GridFS
+from pyramid.renderers import JSON
+import datetime
 
 from pyramid.config import Configurator
 
@@ -11,6 +13,15 @@ def main(global_config, **settings):
     """
     config = Configurator(settings=settings)
     config.add_static_view('static', 'static', cache_max_age=3600)
+
+    # Add a datetime json renderer adapter.
+    # This snippet comes from:
+    # http://docs.pylonsproject.org/projects/pyramid/en/master/narr/renderers.html#using-the-add-adapter-method-of-a-custom-json-renderer
+    json_renderer = JSON()
+    def datetime_adapter(obj, request):
+        return obj.isoformat()
+    json_renderer.add_adapter(datetime.datetime, datetime_adapter)
+    config.add_renderer('json', json_renderer)
 
     # (route_name, URL)
     config.add_route('upcoming_events', 'api/v1.0/events')
