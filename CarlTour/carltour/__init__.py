@@ -27,6 +27,7 @@ def main(global_config, **settings):
     config.add_route('upcoming_events', 'api/v1.0/events')
     config.scan()
 
+    # db_url is stored in .ini files 
     db_url = urlparse(settings['mongo_uri'])
 
     # The registry "maps resource types to views, as well as housing 
