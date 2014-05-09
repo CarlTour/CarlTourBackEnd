@@ -2,6 +2,8 @@ import re
 import datetime
 import bs4 as bs 
 import requests as req
+import fuzzywuzzy.fuzz
+import pprint
 
 from urllib.parse import urljoin
 
@@ -13,6 +15,11 @@ EVENT_JS_RE = r"openWindow\('([A-Za-z0-9=\?_.-]*)'"
 # Note that the last group (a|p|n) indicates either AM, PM, or noon
 ONE_TIME_RE = r"([0-9]{1,2}):([0-9]{2})\s*(a|p|n)"
 TIME_RE = r'%s.*?%s' % (ONE_TIME_RE, ONE_TIME_RE)
+
+# Grab all buildings from file
+with open('buildings.txt') as f:
+    BUILDINGS_LIST = [l.strip() for l in f]
+
 
 def make_soup(url, date_param=None):
     '''
@@ -40,7 +47,9 @@ def make_datetime_obj(date, time):
     # (start_hour, start_minute, am/pm/noon, end_hour, end_minute, am/pm/noon)
     time_match = re.match(TIME_RE, time)
 
-    if time_match is not None:
+    if time_match is None:
+        return None, None
+    else:
         start_hour = int(time_match.group(1))
         start_minute = int(time_match.group(2))
         start_am_pm_noon_marker = time_match.group(3)
@@ -58,7 +67,27 @@ def make_datetime_obj(date, time):
         start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=start_hour, minute=start_minute)
         end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=end_hour, minute=end_minute)
 
-    return start_datetime_obj, end_datetime_obj
+        return start_datetime_obj, end_datetime_obj
+
+def parse_building_and_room(location):
+    '''
+    Use fuzzy string matching to find the building which is most similar to 
+    <location>.
+    Returns building, room (though we don't parse out the room number yet)
+
+    '''
+    closest_match_build = ''
+    closest_match_score = 0
+
+    for build in BUILDINGS_LIST:
+        cur_build_score = fuzzywuzzy.fuzz.partial_ratio(location, build)
+        
+        if cur_build_score > closest_match_score:
+            closest_match_score = cur_build_score
+            closest_match_build = build
+
+    # TODO get room number?
+    return closest_match_build, 0
 
 def scrape_one_event(url, date):
     '''
@@ -76,7 +105,10 @@ def scrape_one_event(url, date):
     # URL to more information
     if title_and_link is not None and len(title_and_link) > 0:
         title = title_and_link.contents[0].strip()
-        more_info_url = title_and_link.find('a')['href']
+        link = title_and_link.find('a')
+
+        if link is not None:
+            more_info_url = link['href']
 
     rows = soup.find_all('tr')
     for r in rows:
@@ -93,13 +125,16 @@ def scrape_one_event(url, date):
                 location = tds[1]
 
     start_datetime, end_datetime = make_datetime_obj(date, time)
+    building, room = parse_building_and_room(location)
     
     return {
         'title' : title,
         'more_info_url' : more_info_url,
         'start_datetime' : start_datetime,
         'end_datetime' : end_datetime,
-        'location' : location
+        'building' : building,
+        'room' : room,
+        'full_location' : location
     }
 
 def get_all_event_urls(event_page_url, date):
@@ -153,10 +188,12 @@ def get_events_for_dates(start_date, end_date):
     return all_events
     
 if __name__ == '__main__':
-    start_date = datetime.date(2014, 5, 8)
-    end_date = datetime.date(2014, 5, 10)
+    start_date = datetime.date(2014, 5, 11)
+    end_date = datetime.date(2014, 5, 12)
     events = get_events_for_dates(start_date, end_date)
+    printer = pprint.PrettyPrinter(indent=4)
+
     for ev in events:
-        print(ev)
+        printer.pprint(ev)
         print('\n-----------\n')
 
