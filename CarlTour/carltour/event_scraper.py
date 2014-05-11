@@ -16,10 +16,113 @@ EVENT_JS_RE = r"openWindow\('([A-Za-z0-9=\?_.-]*)'"
 ONE_TIME_RE = r"([0-9]{1,2}):([0-9]{2})\s*(a|p|n)"
 TIME_RE = r'%s.*?%s' % (ONE_TIME_RE, ONE_TIME_RE)
 
-# Grab all buildings from file
-with open('buildings.txt') as f:
-    BUILDINGS_LIST = [l.strip() for l in f]
+class EventScraper:
 
+    def __init__(self):
+        with open('buildings.txt') as f:
+            self.buildings_list = [l.strip() for l in f]
+
+    def parse_building_and_room(self, location):
+        '''
+        Use fuzzy string matching to find the building which is most similar to 
+        <location>.
+        Returns building, room (though we don't parse out the room number yet)
+
+        '''
+        closest_match_build = ''
+        closest_match_score = 0
+
+        for build in self.buildings_list:
+            cur_build_score = fuzzywuzzy.fuzz.partial_ratio(location, build)
+            
+            if cur_build_score > closest_match_score:
+                closest_match_score = cur_build_score
+                closest_match_build = build
+
+        # TODO get room number?
+        return closest_match_build, 0
+
+    def scrape_one_event(self, url, date):
+        '''
+        For an event with data at <url>, parse out and return 
+        its title, a URL for more info, its date, its time, and its location
+
+        The format of the timing will be datetime objects
+        '''
+        # title, more info URL, date, time, location
+        title, more_info_url, parsed_date, time, location = None, None, None, None, None
+        soup = make_soup(url)
+
+        title_td = soup.find('td', {'class' : 'infoTitle'})
+        if title_td is not None and len(title_td.contents) > 0:
+            title = title_td.contents[0].strip()
+
+        more_link_info_blockquote = soup.find('blockquote')
+
+        # Blockquote stores the title (as content) and 
+        # URL to more information
+        if more_link_info_blockquote is not None and len(more_link_info_blockquote) > 0:
+            link = more_link_info_blockquote.find('a')
+
+            if link is not None:
+                more_info_url = link['href']
+
+        rows = soup.find_all('tr')
+        for r in rows:
+            tds = [td.text.strip() for td in r.find_all('td')]
+
+            # Check the first cell: if it's something meaningful, set
+            # the appropriate variable
+            if len(tds) == 2:
+                if tds[0] == 'Date':
+                    parsed_date = tds[1]
+                elif tds[0] == 'Time:':
+                    time = tds[1]
+                elif tds[0] == 'Location:':
+                    location = tds[1]
+
+        start_datetime, end_datetime = make_datetime_obj(date, time)
+        building, room = self.parse_building_and_room(location)
+        
+        return {
+            'title' : title,
+            'more_info_url' : more_info_url,
+            'start_datetime' : start_datetime,
+            'end_datetime' : end_datetime,
+            'building' : building,
+            'room' : room,
+            'full_location' : location
+        }
+
+    def get_all_event_urls(self, event_page_url, date):
+        '''
+        For a main <event_page_url> and <date>, returns a list of absolute URLs to 
+        individual events
+        '''
+        soup = make_soup(event_page_url, date)
+        all_event_urls = []
+
+        event_titles = soup.find_all('td', {'class' : 'events_title'})
+        for et in event_titles:
+            link = et.find('a')
+            relative_url_match = re.search(EVENT_JS_RE, link['href'])
+
+            if relative_url_match is not None:
+                relative_url = relative_url_match.group(1)
+                abs_url = urljoin(BASE_EVENTS_URL, relative_url)
+                all_event_urls.append(abs_url)
+
+        return all_event_urls
+
+    def scrape_events_page(self, events_url, date):
+        '''
+        Returns a list of events (dictionaries) listed on <events_url>
+        on date <date>
+        '''
+        event_urls = self.get_all_event_urls(events_url, date)
+        parsed_events = [self.scrape_one_event(url, date) for url in event_urls]
+
+        return parsed_events
 
 def make_soup(url, date_param=None):
     '''
@@ -69,109 +172,12 @@ def make_datetime_obj(date, time):
 
         return start_datetime_obj, end_datetime_obj
 
-def parse_building_and_room(location):
-    '''
-    Use fuzzy string matching to find the building which is most similar to 
-    <location>.
-    Returns building, room (though we don't parse out the room number yet)
-
-    '''
-    closest_match_build = ''
-    closest_match_score = 0
-
-    for build in BUILDINGS_LIST:
-        cur_build_score = fuzzywuzzy.fuzz.partial_ratio(location, build)
-        
-        if cur_build_score > closest_match_score:
-            closest_match_score = cur_build_score
-            closest_match_build = build
-
-    # TODO get room number?
-    return closest_match_build, 0
-
-def scrape_one_event(url, date):
-    '''
-    For an event with data at <url>, parse out and return 
-    its title, a URL for more info, its date, its time, and its location
-
-    The format of the timing will be datetime objects
-    '''
-    # title, more info URL, date, time, location
-    title, more_info_url, parsed_date, time, location = None, None, None, None, None
-    soup = make_soup(url)
-    title_and_link = soup.find('blockquote')
-
-    # Blockquote stores the title (as content) and 
-    # URL to more information
-    if title_and_link is not None and len(title_and_link) > 0:
-        title = title_and_link.contents[0].strip()
-        link = title_and_link.find('a')
-
-        if link is not None:
-            more_info_url = link['href']
-
-    rows = soup.find_all('tr')
-    for r in rows:
-        tds = [td.text.strip() for td in r.find_all('td')]
-
-        # Check the first cell: if it's something meaningful, set
-        # the appropriate variable
-        if len(tds) == 2:
-            if tds[0] == 'Date':
-                parsed_date = tds[1]
-            elif tds[0] == 'Time:':
-                time = tds[1]
-            elif tds[0] == 'Location:':
-                location = tds[1]
-
-    start_datetime, end_datetime = make_datetime_obj(date, time)
-    building, room = parse_building_and_room(location)
-    
-    return {
-        'title' : title,
-        'more_info_url' : more_info_url,
-        'start_datetime' : start_datetime,
-        'end_datetime' : end_datetime,
-        'building' : building,
-        'room' : room,
-        'full_location' : location
-    }
-
-def get_all_event_urls(event_page_url, date):
-    '''
-    For a main <event_page_url> and <date>, returns a list of absolute URLs to 
-    individual events
-    '''
-    soup = make_soup(event_page_url, )
-    all_event_urls = []
-
-    event_titles = soup.find_all('td', {'class' : 'events_title'})
-    for et in event_titles:
-        link = et.find('a')
-        relative_url_match = re.search(EVENT_JS_RE, link['href'])
-
-        if relative_url_match is not None:
-            relative_url = relative_url_match.group(1)
-            abs_url = urljoin(BASE_EVENTS_URL, relative_url)
-            all_event_urls.append(abs_url)
-
-    return all_event_urls
-
-def scrape_events_page(events_url, date):
-    '''
-    Returns a list of events (dictionaries) listed on <events_url>
-    on date <date>
-    '''
-    event_urls = get_all_event_urls(events_url, date)
-    parsed_events = [scrape_one_event(url, date) for url in event_urls]
-
-    return parsed_events
-
 def get_events_for_dates(start_date, end_date):
     '''
     Main function that returns all events between <start_date> and <end_date>,
     both of which should be datetime.date objects
     '''
+    scraper = EventScraper()
     one_day_delta = datetime.timedelta(days=1)
     all_dates = []
     cur_date = start_date
@@ -183,7 +189,7 @@ def get_events_for_dates(start_date, end_date):
 
     all_events = []
     for d in all_dates:
-        all_events.extend(scrape_events_page(BASE_EVENTS_URL, d))
+        all_events.extend(scraper.scrape_events_page(BASE_EVENTS_URL, d))
 
     return all_events
     
