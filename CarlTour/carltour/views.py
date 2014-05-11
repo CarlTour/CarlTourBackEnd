@@ -13,8 +13,8 @@ class UpcomingEventsAPI(object):
         # Exclude the _id field, but return everything else
         all_events = list(event_collection.find(fields={'_id' : False}, spec={
             "$and" : [
-                {"start_time" : {"$lt": datetime.datetime.now() + datetime.timedelta(hours=36)}},
-                {"end_time": {"$gt" : datetime.datetime.now()}}
+                {"start_datetime" : {"$lt": datetime.datetime.now() + datetime.timedelta(hours=36)}},
+                {"end_datetime": {"$gt" : datetime.datetime.now()}}
             ]
         }))
         print (all_events)
