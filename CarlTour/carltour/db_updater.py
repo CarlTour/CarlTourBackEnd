@@ -5,16 +5,19 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from pyramid.paster import bootstrap
 
-from carltour.event_scraper import get_events_for_dates
+from carltour.event_scraper import EventScraper
 
-def update_db_for_dates(start_date, end_date, db, collection_name='events'):
+def update_db_for_dates(start_date, end_date, db, collection_name='events', buildings_colleciton='buildings'):
     '''
     Insert all events scraped from the website that take place between
     <start_date> and <end_date>
 
     Both parameters should be datetime.date objects
     '''
-    event_dicts = get_events_for_dates(start_date, end_date)
+    buildings = list(db[buildings_colleciton].find())
+    scraper = EventScraper(buildings)
+
+    event_dicts = scraper.get_events_for_dates(start_date, end_date)
     collection = db[collection_name]
 
     inserted_ids = [collection.insert(e) for e in event_dicts]

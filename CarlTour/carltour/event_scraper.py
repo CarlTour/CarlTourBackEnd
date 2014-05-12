@@ -18,26 +18,38 @@ TIME_RE = r'%s.*?%s' % (ONE_TIME_RE, ONE_TIME_RE)
 
 class EventScraper:
 
-    def __init__(self):
-        with open('buildings.txt') as f:
-            self.buildings_list = [l.strip() for l in f]
+    def __init__(self, building_dicts):
+        '''
+        <building_dicts> should be a list where each entry is a dictionary
+        with keys 'name' and 'aliases', like:
+        {
+            'name' : 'Center for Math and Computing',
+            'aliases' : ['CMC', 'math building', ...]
+        }
+        '''
+        self.buildings = building_dicts
 
-    def parse_building_and_room(self, location):
+    def parse_building_and_room(self, location_str):
         '''
         Use fuzzy string matching to find the building which is most similar to 
-        <location>.
+        <location_str>.
         Returns building, room (though we don't parse out the room number yet)
 
         '''
         closest_match_build = ''
         closest_match_score = 0
 
-        for build in self.buildings_list:
-            cur_build_score = fuzzywuzzy.fuzz.partial_ratio(location, build)
-            
-            if cur_build_score > closest_match_score:
-                closest_match_score = cur_build_score
-                closest_match_build = build
+        for build in self.buildings:
+            official_name = build['name']
+            aliases = build['aliases']
+
+            for bname in [official_name] + aliases:
+                cur_build_score = fuzzywuzzy.fuzz.partial_ratio(location_str, bname)
+                
+                if cur_build_score > closest_match_score:
+                    # The best match will be defined by official name, not an alias
+                    closest_match_score = cur_build_score
+                    closest_match_build = official_name
 
         # TODO get room number?
         return closest_match_build, 0
@@ -124,6 +136,26 @@ class EventScraper:
 
         return parsed_events
 
+    def get_events_for_dates(self, start_date, end_date):
+        '''
+        Main function that returns all events between <start_date> and <end_date>,
+        both of which should be datetime.date objects
+        '''
+        one_day_delta = datetime.timedelta(days=1)
+        all_dates = []
+        cur_date = start_date
+
+        # I'm sure there's a list comprehension to do this, but oh well
+        while cur_date <= end_date:
+            all_dates.append(cur_date)
+            cur_date += one_day_delta
+
+        all_events = []
+        for d in all_dates:
+            all_events.extend(self.scrape_events_page(BASE_EVENTS_URL, d))
+
+        return all_events
+
 def make_soup(url, date_param=None):
     '''
     Returns soup created from sending a GET to <url> with <params>
@@ -171,32 +203,19 @@ def make_datetime_obj(date, time):
         end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=end_hour, minute=end_minute)
 
         return start_datetime_obj, end_datetime_obj
-
-def get_events_for_dates(start_date, end_date):
-    '''
-    Main function that returns all events between <start_date> and <end_date>,
-    both of which should be datetime.date objects
-    '''
-    scraper = EventScraper()
-    one_day_delta = datetime.timedelta(days=1)
-    all_dates = []
-    cur_date = start_date
-
-    # I'm sure there's a list comprehension to do this, but oh well
-    while cur_date <= end_date:
-        all_dates.append(cur_date)
-        cur_date += one_day_delta
-
-    all_events = []
-    for d in all_dates:
-        all_events.extend(scraper.scrape_events_page(BASE_EVENTS_URL, d))
-
-    return all_events
     
 if __name__ == '__main__':
     start_date = datetime.date(2014, 5, 11)
     end_date = datetime.date(2014, 5, 12)
-    events = get_events_for_dates(start_date, end_date)
+
+    # These are usually provided by DB, but read from file for testing the scraper
+    with open('buildings.txt') as f:
+        buildings = [l.strip() for l in f]
+    building_dicts = [{'name' : b, 'aliases' : []} for b in buildings]
+
+    scraper = EventScraper(building_dicts)
+
+    events = scraper.get_events_for_dates(start_date, end_date)
     printer = pprint.PrettyPrinter(indent=4)
 
     for ev in events:
