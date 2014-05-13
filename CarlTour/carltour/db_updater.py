@@ -20,7 +20,7 @@ def update_db_for_dates(start_date, end_date, db, collection_name='events', buil
     event_dicts = scraper.get_events_for_dates(start_date, end_date)
     collection = db[collection_name]
 
-    inserted_ids = [collection.insert(e) for e in event_dicts]
+    inserted_ids = [collection.update(e, e, upsert = True) for e in event_dicts]
 
 if __name__ == '__main__':
     # See http://docs.pylonsproject.org/projects/pyramid/en/latest/narr/commandline.html#writing-a-script
