@@ -18,7 +18,7 @@ TIME_RE = r'%s.*?%s' % (ONE_TIME_RE, ONE_TIME_RE)
 
 class EventScraper:
 
-    def __init__(self, building_dicts):
+    def __init__(self, building_dicts, building_callback=None):
         '''
         <building_dicts> should be a list where each entry is a dictionary
         with keys 'name' and 'aliases', like:
@@ -26,8 +26,12 @@ class EventScraper:
             'name' : 'Center for Math and Computing',
             'aliases' : ['CMC', 'math building', ...]
         }
+        <building_callback> is a function that is called (once) at the end of an attempt to 
+        match a building string to one of the buildings in <self.buildings>
+        Takes 3 arguments: (full_input_str, best_match_str, best_match_score)
         '''
         self.buildings = building_dicts
+        self.building_callback = building_callback
 
     def parse_building_and_room(self, location_str):
         '''
@@ -37,6 +41,7 @@ class EventScraper:
 
         '''
         closest_match_build = ''
+        closest_match_actual_str = ''
         closest_match_score = 0
 
         for build in self.buildings:
@@ -51,6 +56,12 @@ class EventScraper:
                     closest_match_score = cur_build_score
                     closest_match_build = official_name
 
+                    # Want to return an official building name, but also keep track 
+                    # of the alias (which may be an official name) that gave highest score
+                    closest_match_actual_str = bname
+
+        if self.building_callback is not None:
+            self.building_callback(location_str, closest_match_actual_str, closest_match_score)
         # TODO get room number?
         return closest_match_build, 0
 
@@ -94,8 +105,14 @@ class EventScraper:
                     location = tds[1]
 
         start_datetime, end_datetime = make_datetime_obj(date, time)
-        building, room = self.parse_building_and_room(location)
-        
+
+        # Some events don't have locations -- how should we handle this?
+        # For now, just don't include these events
+        if location is None:
+            return None
+        else:
+            building, room = self.parse_building_and_room(location)
+    
         return {
             'title' : title,
             'more_info_url' : more_info_url,
@@ -152,7 +169,8 @@ class EventScraper:
 
         all_events = []
         for d in all_dates:
-            all_events.extend(self.scrape_events_page(BASE_EVENTS_URL, d))
+            # Some events will simply be None if they were unparsable
+            all_events.extend([e for e in self.scrape_events_page(BASE_EVENTS_URL, d) if e is not None])
 
         return all_events
 
