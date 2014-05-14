@@ -17,6 +17,28 @@ class UpcomingEventsAPI(object):
                 {"end_datetime": {"$gt" : datetime.datetime.now()}}
             ]
         }))
-        print (all_events)
+        
         event_dict = {'events' : all_events}
         return event_dict
+
+@view_defaults(renderer='templates/base.jinja2')
+class StaticPages(object):
+    def __init__(self, request):
+        self.request = request
+
+    @view_config(request_method='GET', route_name='home_page')
+    def home_page(self):
+        return {'name' : 'daniel whoosa'}
+
+
+@view_defaults(renderer='templates/events_table.jinja2')
+class EventViewer(object):
+    def __init__(self, request):
+        self.request = request
+
+    @view_config(request_method='GET', route_name='events_view')
+    def show_events(self):
+        event_collection = self.request.db['events']
+        all_events = list(event_collection.find(fields={'_id' : False}).sort())
+        return {'events' : all_events}
+

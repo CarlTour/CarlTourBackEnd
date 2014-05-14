@@ -14,6 +14,9 @@ def main(global_config, **settings):
     config = Configurator(settings=settings)
     config.add_static_view('static', 'static', cache_max_age=3600)
 
+    # Use jinja2 as templating language
+    config.include('pyramid_jinja2')
+
     # Add a datetime json renderer adapter.
     # This snippet comes from:
     # http://docs.pylonsproject.org/projects/pyramid/en/master/narr/renderers.html#using-the-add-adapter-method-of-a-custom-json-renderer
@@ -25,6 +28,8 @@ def main(global_config, **settings):
 
     # (route_name, URL)
     config.add_route('upcoming_events', 'api/v1.0/events')
+    config.add_route('home_page', '/')
+    config.add_route('events_view', 'events')
     config.scan()
 
     # db_url is stored in .ini files 

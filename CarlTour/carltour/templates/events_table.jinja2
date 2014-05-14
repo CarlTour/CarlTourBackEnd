@@ -1,0 +1,47 @@
+{% extends "base.jinja2" %}
+
+{% block further_head %}
+{% endblock further_head %}
+
+{% block content %}
+<body>
+  <div class="container">
+    <div class="col-md-12">
+      <table class="table table-hover table-bordered">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Title</th>
+            <th>Location</th>
+            <th>Full Location</th>
+            <th>More Info</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ev in events %}
+          <tr>
+
+            {% if ev['start_datetime'] %}
+              <th>{{ ev['start_datetime'].strftime('%m/%d %H:%M') }}</th>
+            {% else %}
+              <th></th>
+            {% endif %}
+
+            <th>{{ ev['title'] }}</th>
+            <th>{{ ev['building'] }}</th>
+            <th>{{ ev['full_location'] }}</th>
+            
+            {% if ev['more_info_url'] %}
+              <th><a href="{{ ev['more_info_url'] }}">{{ ev['more_info_url'] }}</a></th>
+            {% else %}
+              <th></th>
+            {% endif %}
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+{% endblock content %}
