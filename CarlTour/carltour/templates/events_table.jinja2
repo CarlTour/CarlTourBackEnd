@@ -15,6 +15,8 @@
             <th>Location</th>
             <th>Full Location</th>
             <th>More Info</th>
+            <th>Fix Location</th>
+            <th>New alias</th>
           </tr>
         </thead>
         <tbody>
@@ -27,16 +29,30 @@
               <th></th>
             {% endif %}
 
-            <th>{{ ev['title'] }}</th>
-            <th>{{ ev['building'] }}</th>
-            <th>{{ ev['full_location'] }}</th>
+            <th class="title_cell">{{ ev['title'] }}</th>
+            <th class="building_cell">{{ ev['building'] }}</th>
+            <th class="full_location_cell">{{ ev['full_location'] }}</th>
             
             {% if ev['more_info_url'] %}
-              <th><a href="{{ ev['more_info_url'] }}">{{ ev['more_info_url'] }}</a></th>
+              <th class="more_info_cell"><a href="{{ ev['more_info_url'] }}">{{ ev['more_info_url'] }}</a></th>
             {% else %}
-              <th></th>
+              <th class="more_info_cell"></th>
             {% endif %}
 
+            <th class="new_building_cell">
+              <select>
+                {% for build in buildings %}
+                  <option>{{ build }}</option>
+                {% endfor %}
+              </select>
+            </th>
+
+            <th class="new_alias_cell">
+              <textarea></textarea>
+              <button type="submit" class="btn btn-default new_alias_submit">
+                Add alias
+              </button>
+            </th>
           </tr>
           {% endfor %}
         </tbody>

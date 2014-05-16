@@ -39,6 +39,14 @@ class EventViewer(object):
     @view_config(request_method='GET', route_name='events_view')
     def show_events(self):
         event_collection = self.request.db['events']
-        all_events = list(event_collection.find(fields={'_id' : False}).sort())
-        return {'events' : all_events}
+        building_collection = self.request.db['buildings']
+
+        all_events = list(event_collection.find(fields={'_id' : False}).sort('start_datetime'))
+        official_building_name_docs = building_collection.find(
+            fields={'name' : True, '_id' : False}
+        ).sort('name')
+
+        official_building_names = [e['name'] for e in official_building_name_docs]
+
+        return {'events' : all_events, 'buildings' : official_building_names}
 
