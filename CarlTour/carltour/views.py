@@ -31,6 +31,21 @@ class StaticPages(object):
         return {'name' : 'daniel whoosa'}
 
 
+@view_defaults(renderer='json')
+class UpdateBuilding(object):
+    def __init__(self, request):
+        self.request = request
+
+    @view_config(request_method='POST', route_name='update_building_alias')
+    def add_alias_to_building(self):
+        print('Got a request!')
+        old_location = self.request.params.get('old_location')
+        new_location = self.request.params.get('new_location')
+        alias = self.request.params.get('new_alias')
+        print(self.request)
+        print(old_location, new_location, alias)
+        return {'foo' : 2}
+
 @view_defaults(renderer='templates/events_table.jinja2')
 class EventViewer(object):
     def __init__(self, request):

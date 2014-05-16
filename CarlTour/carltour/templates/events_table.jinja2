@@ -1,6 +1,7 @@
 {% extends "base.jinja2" %}
 
 {% block further_head %}
+<script src="/static/alias_adder.js"></script>
 {% endblock further_head %}
 
 {% block content %}
@@ -16,7 +17,7 @@
             <th>Full Location</th>
             <th>More Info</th>
             <th>Fix Location</th>
-            <th>New alias</th>
+            <th>New Alias</th>
           </tr>
         </thead>
         <tbody>
@@ -40,7 +41,7 @@
             {% endif %}
 
             <th class="new_building_cell">
-              <select>
+              <select class="new_building_select">
                 {% for build in buildings %}
                   <option>{{ build }}</option>
                 {% endfor %}
@@ -48,7 +49,7 @@
             </th>
 
             <th class="new_alias_cell">
-              <textarea></textarea>
+              <textarea class="new_alias_text"></textarea>
               <button type="submit" class="btn btn-default new_alias_submit">
                 Add alias
               </button>

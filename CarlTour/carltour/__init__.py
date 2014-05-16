@@ -1,9 +1,10 @@
+import datetime
+
 from pymongo import MongoClient
 from urllib.parse import urlparse
 from gridfs import GridFS
-from pyramid.renderers import JSON
-import datetime
 
+from pyramid.renderers import JSON
 from pyramid.config import Configurator
 
 
@@ -30,6 +31,7 @@ def main(global_config, **settings):
     config.add_route('upcoming_events', 'api/v1.0/events')
     config.add_route('home_page', '/')
     config.add_route('events_view', 'events')
+    config.add_route('update_building_alias', 'update_building_alias')
     config.scan()
 
     # db_url is stored in .ini files 
