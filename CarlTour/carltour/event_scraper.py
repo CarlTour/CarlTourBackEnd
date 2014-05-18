@@ -16,6 +16,10 @@ EVENT_JS_RE = r"openWindow\('([A-Za-z0-9=\?_.-]*)'"
 ONE_TIME_RE = r"([0-9]{1,2}):([0-9]{2})\s*(a|p|n)"
 TIME_RE = r'%s.*?%s' % (ONE_TIME_RE, ONE_TIME_RE)
 
+# Default start of an "all day" event is 8am, end is 10pm
+DEFAULT_START_TIME = datetime.time(hour=8)
+DEFAULT_END_TIME = datetime.time(hour=22)
+
 class EventScraper:
 
     def __init__(self, building_dicts, building_callback=None):
@@ -33,11 +37,11 @@ class EventScraper:
         self.buildings = building_dicts
         self.building_callback = building_callback
 
-    def parse_building_and_room(self, location_str):
+    def parse_building(self, location_str):
         '''
         Use fuzzy string matching to find the building which is most similar to 
         <location_str>.
-        Returns building, room (though we don't parse out the room number yet)
+        Returns building
 
         '''
         closest_match_build = ''
@@ -62,8 +66,8 @@ class EventScraper:
 
         if self.building_callback is not None:
             self.building_callback(location_str, closest_match_actual_str, closest_match_score)
-        # TODO get room number?
-        return closest_match_build, 0
+        
+        return closest_match_build
 
     def scrape_one_event(self, url, date):
         '''
@@ -111,7 +115,7 @@ class EventScraper:
         if location is None:
             return None
         else:
-            building, room = self.parse_building_and_room(location)
+            building = self.parse_building(location)
     
         return {
             'title' : title,
@@ -119,7 +123,6 @@ class EventScraper:
             'start_datetime' : start_datetime,
             'end_datetime' : end_datetime,
             'building' : building,
-            'room' : room,
             'full_location' : location
         }
 
@@ -131,7 +134,9 @@ class EventScraper:
         soup = make_soup(event_page_url, date)
         all_event_urls = []
 
-        event_titles = soup.find_all('td', {'class' : 'events_title'})
+        # The titles with no time have class "events_notime"
+        # Go figure.
+        event_titles = soup.find_all('td', {'class' : ['events_title', 'events_notime']})
         for et in event_titles:
             link = et.find('a')
             relative_url_match = re.search(EVENT_JS_RE, link['href'])
@@ -198,33 +203,38 @@ def make_datetime_obj(date, time):
     '''
     # time_match has groups in the following order:
     # (start_hour, start_minute, am/pm/noon, end_hour, end_minute, am/pm/noon)
-    time_match = re.match(TIME_RE, time)
-
-    if time_match is None:
-        return None, None
+    if time is None:
+        start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_START_TIME.hour)
+        end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_END_TIME.hour)
     else:
-        start_hour = int(time_match.group(1))
-        start_minute = int(time_match.group(2))
-        start_am_pm_noon_marker = time_match.group(3)
+        time_match = re.match(TIME_RE, time)
 
-        if start_am_pm_noon_marker == 'p' and start_hour < 12:
-            start_hour += 12
+        if time_match is None:
+            start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_START_TIME.hour)
+            end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_END_TIME.hour)
+        else:
+            start_hour = int(time_match.group(1))
+            start_minute = int(time_match.group(2))
+            start_am_pm_noon_marker = time_match.group(3)
 
-        end_hour = int(time_match.group(4))
-        end_minute = int(time_match.group(5))
-        end_am_pm_noon_marker = time_match.group(6)
+            if start_am_pm_noon_marker == 'p' and start_hour < 12:
+                start_hour += 12
 
-        if end_am_pm_noon_marker == 'p' and end_hour < 12:
-            end_hour += 12
+            end_hour = int(time_match.group(4))
+            end_minute = int(time_match.group(5))
+            end_am_pm_noon_marker = time_match.group(6)
 
-        start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=start_hour, minute=start_minute)
-        end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=end_hour, minute=end_minute)
+            if end_am_pm_noon_marker == 'p' and end_hour < 12:
+                end_hour += 12
 
-        return start_datetime_obj, end_datetime_obj
+            start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=start_hour, minute=start_minute)
+            end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=end_hour, minute=end_minute)
+
+    return start_datetime_obj, end_datetime_obj
     
 if __name__ == '__main__':
-    start_date = datetime.date(2014, 5, 11)
-    end_date = datetime.date(2014, 5, 12)
+    start_date = datetime.date(2014, 5, 18)
+    end_date = datetime.date(2014, 5, 18)
 
     # These are usually provided by DB, but read from file for testing the scraper
     with open('buildings.txt') as f:
