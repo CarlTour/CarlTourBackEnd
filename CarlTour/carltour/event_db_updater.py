@@ -32,7 +32,7 @@ if __name__ == '__main__':
     env = bootstrap('../development.ini')
     db = env['request'].db
 
-    start_date = datetime.date(2014, 5, 14)
-    end_date = datetime.date(2014, 5, 15)
+    start_date = datetime.date(2014, 5, 19)
+    end_date = datetime.date(2014, 5, 21)
 
     update_db_for_dates(start_date, end_date, db)

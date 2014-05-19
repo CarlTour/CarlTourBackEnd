@@ -21,16 +21,6 @@ class UpcomingEventsAPI(object):
         event_dict = {'events' : all_events}
         return event_dict
 
-@view_defaults(renderer='templates/base.jinja2')
-class StaticPages(object):
-    def __init__(self, request):
-        self.request = request
-
-    @view_config(request_method='GET', route_name='home_page')
-    def home_page(self):
-        return {'name' : 'daniel whoosa'}
-
-
 @view_defaults(renderer='json')
 class UpdateBuilding(object):
     def __init__(self, request):
@@ -39,11 +29,35 @@ class UpdateBuilding(object):
     @view_config(request_method='POST', route_name='update_building_alias')
     def add_alias_to_building(self):
         print('Got a request!')
+        full_location = self.request.params.get('full_location')
         old_location = self.request.params.get('old_location')
         new_location = self.request.params.get('new_location')
         alias = self.request.params.get('new_alias')
-        print(self.request)
-        print(old_location, new_location, alias)
+        
+        # (nj) we make this call a lot (since we're only using 2 collections)
+        # is there a way to cache it? or just store it in request?
+        building_collection = self.request.db['buildings']
+        event_collection = self.request.db['events']
+
+        # Update any event with <full_location> and <old_location> to store the 
+        # new (correct) <new_location> as its building
+        event_updates = event_collection.update({'building' : old_location, 'full_location' : full_location}, {
+            '$set' : {
+                'building' : new_location
+            }
+        })
+
+        # Add an alias <alias> to the building document with name <new_location>
+        building_updates = building_collection.update({'name' : new_location}, {
+                '$addToSet' : {
+                    'aliases' : alias
+                }
+            }
+        )
+        print('Event updates:', event_updates)
+        print('Building updates:', building_updates)
+
+        print(full_location, old_location, new_location, alias)
         return {'foo' : 2}
 
 @view_defaults(renderer='templates/events_table.jinja2')

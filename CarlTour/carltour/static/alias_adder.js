@@ -9,20 +9,26 @@ $(document).ready(function() {
 
         var new_location_cell = parent.siblings(".new_building_cell");
         var new_location = new_location_cell.children(".new_building_select").val();
+
+        // Need the full location as well so backend knows what events to update
+        var full_location = parent.siblings(".full_location_cell").text();
         
         var locationUpdates = {
+            'full_location' : full_location,
             'old_location' : old_location,
             'new_location' : new_location,
             'new_alias' : new_alias
         };
         console.log(locationUpdates);
 
-        $.post('update_building', locationUpdates, function(data) {
+        $.post('update_building_alias', locationUpdates, function(data) {
             // highlight this row, or something
             // actually, update all the rows with the same old_location
             old_location_cell.text(new_location);
-            new_alias_cell.text('');
+            new_alias_cell.val('');
+            $('.alert').alert();
             console.log('all done!');
+            alert('')
         });
     });
 });
