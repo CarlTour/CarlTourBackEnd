@@ -5,9 +5,10 @@ import requests as req
 import fuzzywuzzy.fuzz
 import pprint
 
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 BASE_EVENTS_URL = 'http://apps.carleton.edu/calendar/'
+BASE_CARLETON_URL = 'http://apps.carleton.edu/'
 # For parsing out a link to an event from a JS popup 
 EVENT_JS_RE = r"openWindow\('([A-Za-z0-9=\?_.-]*)'"
 
@@ -91,7 +92,7 @@ class EventScraper:
             link = more_link_info_blockquote.find('a')
 
             if link is not None:
-                more_info_url = link['href']
+                more_info_url = make_carl_absolute_url(link['href'])
 
         rows = soup.find_all('tr')
         for r in rows:
@@ -238,6 +239,16 @@ def get_hour_minute_from_re_match(time_match):
         hour += 12
 
     return hour, minute
+
+def make_carl_absolute_url(url):
+    '''
+    Add the base Carleton URL if <url> is relative
+    '''
+    parsed = urlparse(url)
+    absolute_url = urljoin(BASE_CARLETON_URL, url) if parsed.netloc == '' else url
+    
+    return absolute_url
+
 
     
 if __name__ == '__main__':
