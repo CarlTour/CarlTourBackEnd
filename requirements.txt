@@ -5,7 +5,7 @@ PasteDeploy==1.5.2
 Pygments==1.6
 WebOb==1.3.1
 beautifulsoup4==4.3.2
-git+https://github.com/seatgeek/fuzzywuzzy.git@7d8f2f89b69bd21707f5b66036d568c81f81d64e#egg=fuzzywuzzy-origin/master
+-e git+https://github.com/seatgeek/fuzzywuzzy.git@7d8f2f89b69bd21707f5b66036d568c81f81d64e#egg=fuzzywuzzy
 gnureadline==6.3.3
 html5lib==0.999
 pymongo==2.7
