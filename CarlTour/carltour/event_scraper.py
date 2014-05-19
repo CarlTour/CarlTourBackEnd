@@ -14,7 +14,6 @@ EVENT_JS_RE = r"openWindow\('([A-Za-z0-9=\?_.-]*)'"
 # A time looks like 5:00 a.m.-11:00 p.m.
 # Note that the last group (a|p|n) indicates either AM, PM, or noon
 ONE_TIME_RE = r"([0-9]{1,2}):([0-9]{2})\s*(a|p|n)"
-TIME_RE = r'%s.*?%s' % (ONE_TIME_RE, ONE_TIME_RE)
 
 # Default start of an "all day" event is 8am, end is 10pm
 DEFAULT_START_TIME = datetime.time(hour=8)
@@ -203,38 +202,47 @@ def make_datetime_obj(date, time):
     '''
     # time_match has groups in the following order:
     # (start_hour, start_minute, am/pm/noon, end_hour, end_minute, am/pm/noon)
-    if time is None:
-        start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_START_TIME.hour)
-        end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_END_TIME.hour)
-    else:
-        time_match = re.match(TIME_RE, time)
+    
+    # Set defaults -- if there are RE matches, these will be reassigned accordingly
+    start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_START_TIME.hour)
+    end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_END_TIME.hour)
 
-        if time_match is None:
-            start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_START_TIME.hour)
-            end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=DEFAULT_END_TIME.hour)
-        else:
-            start_hour = int(time_match.group(1))
-            start_minute = int(time_match.group(2))
-            start_am_pm_noon_marker = time_match.group(3)
+    if time is not None:
+        time_matches = re.findall(ONE_TIME_RE, time)
 
-            if start_am_pm_noon_marker == 'p' and start_hour < 12:
-                start_hour += 12
-
-            end_hour = int(time_match.group(4))
-            end_minute = int(time_match.group(5))
-            end_am_pm_noon_marker = time_match.group(6)
-
-            if end_am_pm_noon_marker == 'p' and end_hour < 12:
-                end_hour += 12
-
+        if len(time_matches) == 1:
+            start_hour, start_minute = get_hour_minute_from_re_match(time_matches[0])
             start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=start_hour, minute=start_minute)
+
+        elif len(time_matches) == 2:
+            start_hour, start_minute = get_hour_minute_from_re_match(time_matches[0])
+            end_hour, end_minute = get_hour_minute_from_re_match(time_matches[1])
+
+            start_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=start_hour, minute=start_minute)            
             end_datetime_obj = datetime.datetime(year=date.year, month=date.month, day=date.day, hour=end_hour, minute=end_minute)
 
     return start_datetime_obj, end_datetime_obj
+
+def get_hour_minute_from_re_match(time_match):
+    '''
+    A time match is a list matched from a time RE that looks like:
+    [hour, minute, 'a'|'p'] (all strings)
+
+    Parses hour/minute as ints and adjusts for AM/PM. Returns hour, minute
+    '''
+    hour = int(time_match[0])
+    minute = int(time_match[1])
+    am_pm_noon_marker = time_match[2]
+
+    if am_pm_noon_marker == 'p' and hour < 12:
+        hour += 12
+
+    return hour, minute
+
     
 if __name__ == '__main__':
-    start_date = datetime.date(2014, 5, 18)
-    end_date = datetime.date(2014, 5, 18)
+    start_date = datetime.date(2014, 5, 21)
+    end_date = datetime.date(2014, 5, 21)
 
     # These are usually provided by DB, but read from file for testing the scraper
     with open('buildings.txt') as f:
@@ -248,5 +256,7 @@ if __name__ == '__main__':
 
     for ev in events:
         printer.pprint(ev)
+        print(ev['start_datetime'].strftime('%m/%d %H:%M'))
+        print(ev['end_datetime'].strftime('%m/%d %H:%M'))
         print('\n-----------\n')
 
