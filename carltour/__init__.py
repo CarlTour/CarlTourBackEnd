@@ -35,11 +35,12 @@ def main(global_config, **settings):
     config.scan()
 
     # db_url is stored in environmental variables
-    db_url = os.environ["MONGO_URI"]
-
+    db_url = urlparse(os.environ["MONGO_URI"])
+    print(os.environ["MONGO_URI"])
+    print("HERE it is", db_url)
     # The registry "maps resource types to views, as well as housing 
     # other application-specific component registrations"
-    config.registry.db = MongoClient(db_url)
+    config.registry.db = MongoClient(str(db_url))
 
     # TODO figure out what these do. Taken from Pyramid/mongo tutorial here:
     # http://pyramid-cookbook.readthedocs.org/en/latest/database/mongodb.html
