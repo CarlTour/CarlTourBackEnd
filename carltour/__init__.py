@@ -1,4 +1,4 @@
-import datetime
+import os, datetime
 
 from pymongo import MongoClient
 from urllib.parse import urlparse
@@ -34,14 +34,12 @@ def main(global_config, **settings):
     config.add_route('update_building_alias', 'update_building_alias')
     config.scan()
 
-    # db_url is stored in .ini files 
-    db_url = urlparse(settings['mongo_uri'])
+    # db_url is stored in environmental variables
+    db_url = os.environ["MONGO_URI"]
 
     # The registry "maps resource types to views, as well as housing 
     # other application-specific component registrations"
-    config.registry.db = MongoClient(
-            host=db_url.hostname
-    )
+    config.registry.db = MongoClient(db_url)
 
     # TODO figure out what these do. Taken from Pyramid/mongo tutorial here:
     # http://pyramid-cookbook.readthedocs.org/en/latest/database/mongodb.html
