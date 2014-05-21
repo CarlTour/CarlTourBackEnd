@@ -34,11 +34,20 @@
             <th class="building_cell">{{ ev['building'] }}</th>
             <th class="full_location_cell">{{ ev['full_location'] }}</th>
             
-            {% if ev['more_info_url'] %}
-              <th class="more_info_cell"><a href="{{ ev['more_info_url'] }}">{{ ev['more_info_url'] }}</a></th>
-            {% else %}
-              <th class="more_info_cell"></th>
-            {% endif %}
+            <th class="more_info_and_description_cell">
+              {% if ev['more_info_url'] %}
+                  <a href="{{ ev['more_info_url'] }}">{{ ev['more_info_url'] }}</a>
+              {% else %}
+                (No URL parsed)
+              {% endif %}
+              <br />
+              {% if ev['description'] %}
+                {{ ev['description'] }}
+              {% else %}
+                (No description parsed)
+              {% endif %}
+
+            </th>
 
             <th class="new_building_cell">
               <select class="new_building_select">

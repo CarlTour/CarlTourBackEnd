@@ -69,21 +69,48 @@ class EventScraper:
         
         return closest_match_build
 
-    def scrape_one_event(self, url, date):
+    def _parse_title(self, soup):
         '''
-        For an event with data at <url>, parse out and return 
-        its title, a URL for more info, its date, its time, and its location
-
-        The format of the timing will be datetime objects
+        Helper to grab title from <soup>
         '''
-        # title, more info URL, date, time, location
-        title, more_info_url, parsed_date, time, location = None, None, None, None, None
-        soup = make_soup(url)
-
+        title = ''
         title_td = soup.find('td', {'class' : 'infoTitle'})
+
         if title_td is not None and len(title_td.contents) > 0:
             title = title_td.contents[0].strip()
 
+        return title
+
+    def _parse_description(self, soup):
+        '''
+        Helper to grab description from <soup>
+        '''
+        description = ''
+        info_text = soup.find('blockquote', {'class' : 'infoText'})
+
+        if info_text is not None:
+            # All events seem to have a description, followed by
+            # a few newlines and the string More information..."
+            # Only take the text up to the \n
+            stripped = info_text.get_text().strip()
+            end_of_text = stripped.find('\n')
+            if end_of_text == -1:
+                description = stripped
+            else:
+                description = stripped[:end_of_text]
+
+            # Some descriptions are simply the text of "More information"
+            # Let's not parse this out. Return empty description instead
+            if description.startswith('More information'):
+                description = ''
+            
+        return description
+
+    def _parse_more_info_url(self, soup):
+        '''
+        Helper to grab more_info_url from <soup>
+        '''
+        more_info_url = ''
         more_link_info_blockquote = soup.find('blockquote')
 
         # Blockquote stores the title (as content) and 
@@ -94,6 +121,15 @@ class EventScraper:
             if link is not None:
                 more_info_url = make_carl_absolute_url(link['href'])
 
+        return more_info_url
+
+    def _parse_loc_start_end(self, soup, date):
+        '''
+        Helper to grab location, start_datetime, end_datetime_obj from <soup>
+        '''
+        location = ''
+        time = None
+
         rows = soup.find_all('tr')
         for r in rows:
             tds = [td.text.strip() for td in r.find_all('td')]
@@ -101,24 +137,39 @@ class EventScraper:
             # Check the first cell: if it's something meaningful, set
             # the appropriate variable
             if len(tds) == 2:
-                if tds[0] == 'Date':
-                    parsed_date = tds[1]
-                elif tds[0] == 'Time:':
+                if tds[0] == 'Time:':
                     time = tds[1]
                 elif tds[0] == 'Location:':
                     location = tds[1]
 
         start_datetime, end_datetime = make_datetime_obj(date, time)
 
+        return location, start_datetime, end_datetime
+
+    def scrape_one_event(self, url, date):
+        '''
+        For an event with data at <url>, parse out and return 
+        its title, a URL for more info, its date, its time, and its location
+
+        The format of the timing will be datetime objects
+        '''
+        soup = make_soup(url)
+
+        title = self._parse_title(soup)
+        description = self._parse_description(soup)
+        more_info_url = self._parse_more_info_url(soup)
+        location, start_datetime, end_datetime = self._parse_loc_start_end(soup, date)
+
         # Some events don't have locations -- how should we handle this?
         # For now, just don't include these events
-        if location is None:
+        if location == '':
             return None
         else:
             building = self.parse_building(location)
     
         return {
             'title' : title,
+            'description' : description,
             'more_info_url' : more_info_url,
             'start_datetime' : start_datetime,
             'end_datetime' : end_datetime,
@@ -250,7 +301,6 @@ def make_carl_absolute_url(url):
     return absolute_url
 
 
-    
 if __name__ == '__main__':
     start_date = datetime.date(2014, 5, 21)
     end_date = datetime.date(2014, 5, 21)
