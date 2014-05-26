@@ -21,14 +21,12 @@ $(document).ready(function() {
         };
         console.log(locationUpdates);
 
-        $.post('update_building_alias', locationUpdates, function(data) {
+        $.post('api/v1.0/update_building_alias', locationUpdates, function(data) {
             // highlight this row, or something
             // actually, update all the rows with the same old_location
             old_location_cell.text(new_location);
             new_alias_cell.val('');
-            $('.alert').alert();
-            console.log('all done!');
-            alert('')
+            alert('Successful update. Sorry for the popup!')
         });
     });
 });
